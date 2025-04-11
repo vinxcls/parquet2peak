@@ -1,25 +1,23 @@
-use ablf::BlfFile;
-use ablf::ObjectTypes;
-use std::env;
-use std::fs::File;
-use std::io::BufReader;
-use std::sync::Arc;
-use std::time::Instant;
-use std::time::Duration;
+use std::{
+    env,
+    fs::File,
+    io::BufReader,
+    sync::Arc,
+    time::{Instant, Duration},
+};
+use ablf::{BlfFile, ObjectTypes};
+use arrow::{
+    buffer::OffsetBuffer,
+    array::{ArrayRef, UInt8Array, UInt32Array, Float64Array, LargeListArray},
+    record_batch::RecordBatch,
+    datatypes::{DataType, Field, Schema},
+};
+use parquet::{
+    arrow::ArrowWriter,
+    basic::Compression,
+    file::properties::WriterProperties,
+};
 use chrono::{TimeZone, Utc};
-use arrow::buffer::OffsetBuffer;
-use arrow::array::ArrayRef;
-use arrow::array::UInt8Array;
-use arrow::array::UInt32Array;
-use arrow::array::Float64Array;
-use arrow::array::LargeListArray;
-use arrow::record_batch::RecordBatch;
-use arrow::datatypes::DataType;
-use arrow::datatypes::Field;
-use arrow::datatypes::Schema;
-use parquet::arrow::ArrowWriter;
-use parquet::basic::Compression;
-use parquet::file::properties::WriterProperties;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();

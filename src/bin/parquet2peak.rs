@@ -1,17 +1,23 @@
-use std::env;
-use std::io::{self, Write};
-use std::fs::File;
-use std::path::Path;
-use std::thread::sleep;
-use std::time::{Duration, Instant};
-use parquet::record::Field;
-use parquet::errors::ParquetError;
-use parquet::record::{Row, RowAccessor};
-use parquet::file::reader::{FileReader, SerializedFileReader};
-use peak_can::socket::{Baudrate, CanFrame, MessageType, SendCan};
-use peak_can::socket::usb::UsbCanSocket;
-use peak_can::bus::UsbBus;
-use peak_can::socket::FrameConstructionError;
+use std::{
+    env,
+    fs::File,
+    io::Write,
+    path::Path,
+    thread::sleep,
+    time::{Duration, Instant},
+};
+use parquet::{
+    file::reader::{FileReader, SerializedFileReader},
+    record::{Field, Row, RowAccessor},
+    errors::ParquetError,
+};
+use peak_can::{
+    bus::UsbBus,
+    socket::{
+        Baudrate, CanFrame, FrameConstructionError, MessageType, SendCan,
+        usb::UsbCanSocket,
+    },
+};
 
 fn process_row(row: &Row) -> Result<(f64, u32, Vec<u8>), ParquetError> {
     let mut data = Vec::new();
