@@ -37,7 +37,7 @@ fn process_row(row: &Row) -> Result<(f64, u32, Vec<u8>), ParquetError> {
 
 fn send_can_messages(content: &[(f64, u32, Vec<u8>)], socket: &UsbCanSocket) -> Result<(), FrameConstructionError> {
     let mut old_timing: Option<f64> = None;
-
+    let mut passive_timing = Duration::new(0, 0);
     let mut c = 0;
     let mut old_perc = 0.0;
     let content_size = content.len() as f64;
@@ -46,12 +46,13 @@ fn send_can_messages(content: &[(f64, u32, Vec<u8>)], socket: &UsbCanSocket) -> 
 
     for (curr, id, can_data) in content {
         if let Some(previous) = old_timing {
-            let diff = (*curr - previous).max(0.0) * 1_000_000.0;
-            let udiff = diff as u64;
+            let diff = ((*curr - previous).max(0.0) * 1_000_000_000.0) - (passive_timing.as_nanos() as f64);
+            let udiff = (diff / 1_000.0) as u64;
             sleep(Duration::from_micros(udiff));
             //println!("Waiting {}us", udiff);
         }
 
+        let start = Instant::now();
         old_timing = Some(*curr);
 
         let t = if *id < 0x800 {
@@ -73,10 +74,11 @@ fn send_can_messages(content: &[(f64, u32, Vec<u8>)], socket: &UsbCanSocket) -> 
             if perc >= (old_perc + 0.01) {
                 old_perc = perc;
                 print!("\r[{:.2}%]", perc);
-                io::stdout().flush().unwrap();
+                std::io::stdout().flush().unwrap();
             }
             last_print_time = Instant::now();
         }
+        passive_timing = start.elapsed();
     }
     print!("\r[{:.2}%]", (c as f64 / content_size) * 100.0);
 
