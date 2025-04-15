@@ -1,5 +1,4 @@
 use std::{
-    env,
     fs::File,
     io::Write,
     path::Path,
@@ -18,6 +17,7 @@ use peak_can::{
         usb::UsbCanSocket,
     },
 };
+use clap::Parser;
 
 fn process_row(row: &Row) -> Result<(f64, u32, Vec<u8>), ParquetError> {
     let mut data = Vec::new();
@@ -85,38 +85,48 @@ fn send_can_messages(content: &[(f64, u32, Vec<u8>)], socket: &UsbCanSocket) -> 
     Ok(())
 }
 
-fn parse_hex_list(input: &str) -> Vec<u32> {
-     input.split(',')
-          .filter_map(|num| num.trim().strip_prefix("0x")
-          .and_then(|hex| u32::from_str_radix(hex, 16).ok()))
-          .collect()
+fn parse_hex_list(input: Option<String>) -> Vec<u32> {
+    input.unwrap_or_default()
+         .split(',')
+         .filter_map(|num| num.trim().strip_prefix("0x")
+         .and_then(|hex| u32::from_str_radix(hex, 16).ok()))
+         .collect()
+}
+
+#[derive(Parser, Debug)]
+#[command(author, version, about)]
+struct Args {
+    /// File path
+    #[arg(short,long)]
+    file: String,
+
+    /// Enable infinite loop
+    #[arg(short, long, default_value_t = false)]
+    loop_forever: bool,
+
+    /// Exclusion ID list in hex (eg: "0x0A,0x0B,0x1F")
+    #[arg(short, long, default_value = "")]
+    exclude_id: Option<String>,
+
+    /// Bus USB CAN: from 1 to 16
+    #[arg(short, long, default_value_t = 1)]
+    usb_can_bus: u16,
 }
 
 fn main() -> parquet::errors::Result<()> {
-    let args: Vec<String> = env::args().collect();
+    let args = Args::parse();
 
-    if args.len() < 2 {
-        eprintln!("Usage: {} <file.parquet> [forever=1, one-shot=0 (default)] [exclude can id list comma separated]", args[0]);
-        std::process::exit(1);
+    let file_path = &Path::new(&args.file);
+    let forever = args.loop_forever;
+    let exclude_id = parse_hex_list(args.exclude_id);
+    let usb_can_bus = UsbBus::try_from(args.usb_can_bus).unwrap_or_else(|_| {
+        eprintln!("Invalid can bus resetting to USB1!");
+        UsbBus::USB1
+    });
+
+    if exclude_id.is_empty() == false {
+        print!("Apply filter: {:?}", exclude_id);
     }
-
-    let file_path = &Path::new(&args[1]);
-    let forever = match args.get(2).map(|s| s.as_str()) {
-        Some("1") => true,
-        Some("0") => false,
-        Some(_) => {
-            eprintln!("Error: second parameter must be 0 o 1.");
-            std::process::exit(1);
-        }
-        None => false, // false by default
-    };
-    let exclude_id = if let Some(input) = args.get(3) {
-        parse_hex_list(input)
-    } else {
-        Vec::new()
-    };
-
-    println!("Apply filter {:?}", exclude_id);
 
     let start = Instant::now();
     // Apri il file Parquet
@@ -143,7 +153,7 @@ fn main() -> parquet::errors::Result<()> {
     println!("Loading data ({} of {}) from {:?}: {:?}", felem, elem, file_path,
              duration);
 
-    let usb_socket = match UsbCanSocket::open(UsbBus::USB1, Baudrate::Baud500K) {
+    let usb_socket = match UsbCanSocket::open(usb_can_bus, Baudrate::Baud500K) {
         Ok(socket) => socket,
         Err(err) => {
             println!("Unable to open USB socket: {:?}", err);
@@ -151,7 +161,8 @@ fn main() -> parquet::errors::Result<()> {
         }
     };
 
-    println!("Starting simulation of {} frames (loop {})", content.len(), forever);
+    println!("Starting simulation of {} frames (loop:{}, Bus:{:?})",
+             content.len(), forever, usb_can_bus);
 
     loop {
         if let Err(_) = send_can_messages(&content, &usb_socket) {

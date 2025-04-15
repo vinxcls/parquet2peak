@@ -9,3 +9,4 @@ ablf = "0.2.0"
 parquet = "53.3.1"
 arrow = "53.3.1"
 chrono = "0.4"
+clap = { version = "4", features = ["derive"] }

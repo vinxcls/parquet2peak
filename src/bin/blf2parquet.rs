@@ -1,5 +1,4 @@
 use std::{
-    env,
     fs::File,
     io::BufReader,
     sync::Arc,
@@ -18,19 +17,40 @@ use parquet::{
     file::properties::WriterProperties,
 };
 use chrono::{TimeZone, Utc};
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about)]
+struct Args {
+    /// Blf input file
+    #[arg(short,long)]
+    input: String,
+
+    /// Parquet output file
+    #[arg(short, long)]
+    output: String,
+
+    /// Channel
+    #[arg(short, long, default_value_t = 0)]
+    channel: u16,
+
+    /// Start percentage
+    #[arg(short, long, default_value_t = 0.0)]
+    start_percentage: f64,
+
+    /// End percentage
+    #[arg(short, long, default_value_t = 100.0)]
+    end_percentage: f64,
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 3 {
-        eprintln!("Usage: {} <input blf> <output parquet> <channel> [start percentage] [end percentage]", args[0]);
-        std::process::exit(1);
-    }
+    let args = Args::parse();
 
-    let input_blf = &args[1];
-    let output_parquet = &args[2];
-    let channel: u16 = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(0) + 1;
-    let start_percentage: f64 = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(0.0);
-    let end_percentage: f64 = args.get(5).and_then(|s| s.parse().ok()).unwrap_or(100.0);
+    let input_blf = &args.input;
+    let output_parquet = &args.output;
+    let channel: u16 = args.channel + 1;
+    let start_percentage: f64 = args.start_percentage;
+    let end_percentage: f64 = args.end_percentage;
 
     let start = Instant::now();
     let in_file = match File::open(input_blf) {

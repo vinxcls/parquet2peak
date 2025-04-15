@@ -31,11 +31,10 @@ This project depends on the **PEAK** library to interface with the CAN bus. Plea
 
 ## 🚀 Build Instructions
 
-Build the binaries in `release` mode using the following commands:
+Build the binaries in `release` mode using the following command:
 
 ```
-cargo build --bin blf2parquet --release
-cargo build --bin parquet2peak --release
+cargo build --release
 ```
 The resulting executables will be located in `target/release/`.
 
@@ -43,29 +42,47 @@ The resulting executables will be located in `target/release/`.
 
 ### blf2parquet
 
-**Syntax**:
+**Usage**:
 ```
-blf2parquet.exe <input.blf> <output.parquet> <channel> [start_percentage] [end_percentage]
+Usage: blf2parquet.exe [OPTIONS] --input <INPUT> --output <OUTPUT>
+
+Options:
+  -i, --input <INPUT>                        Blf input file
+  -o, --output <OUTPUT>                      Parquet output file
+  -c, --channel <CHANNEL>                    Channel [default: 0]
+  -s, --start-percentage <START_PERCENTAGE>  Start percentage [default: 0]
+  -e, --end-percentage <END_PERCENTAGE>      End percentage [default: 100]
+  -h, --help                                 Print help
+  -V, --version                              Print version
 ```
 **Example**:
 ```
-blf2parquet.exe input.blf output.parquet 0 50 70
+blf2parquet.exe -i input.blf -o output.parquet -c 0 -s 50 -e 70
 ```
 This command converts `input.blf` into `output.parquet` using channel `0`, starting at `50%` and ending at `70%` of the file's duration.
 
 ### parquet2peak
-**Syntax**:
+
+**Usage**:
 ```
-parquet2peak.exe <input.parquet> [forever] [exclude_can_id_list]
+Usage: parquet2peak.exe [OPTIONS] --file <FILE>
+
+Options:
+  -f, --file <FILE>                File path
+  -l, --loop-forever               Enable infinite loop
+  -e, --exclude-id <EXCLUDE_ID>    Exclusion ID list in hex (eg: "0x0A,0x0B,0x1F") [default: ]
+  -u, --usb-can-bus <USB_CAN_BUS>  Bus USB CAN: from 1 to 16 [default: 1]
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
 - `forever`: set to `1` to send in a loop, or `0` (default) for one-shot sending
 - `exclude_can_id_list`: optional comma-separated list of CAN IDs to exclude (e.g. `0x1,0x7FF`)
 
 **Example**:
 ```
-parquet2peak.exe output.parquet 1 0x1,0x7ff
+parquet2peak.exe -f output.parquet -l -e 0x1,0x7ff -u 10
 ```
-This command replays `output.parquet` continuously, excluding CAN IDs `0x1` and `0x7FF`.
+This command replays `output.parquet` continuously on USB CAN bus n.10, excluding CAN IDs `0x1` and `0x7FF`.
 
 ## ✅ Testing
 There are no automated tests yet. To validate manually:
